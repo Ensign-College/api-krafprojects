@@ -1,11 +1,32 @@
 const express = require("express");
+const cors = require("cors");
+const Redis = require("redis");
 
-const boxes = [{ boxID: 1 }, { boxID: 2 }, { boxID: 3 }, { boxID: 4 }];
+const options = { origin: "http://localhost:3000" };
 
-const app = express();
-
-app.get("/boxes", (req, res) => {
-  res.send(JSON.stringify(boxes));
+const redisClient = Redis.createClient({
+  url: `redis://localhost:6379`,
 });
 
-app.listen(3000);
+const app = express();
+const PORT = 3001;
+
+app.use(express.json());
+app.use(cors(options));
+
+app.get("/boxes", async (req, res) => {
+  let boxes = await redisClient.json.get("boxes", { path: "$" });
+  res.json(boxes[0]);
+});
+
+app.post("/boxes", async (req, res) => {
+  let data = req.body;
+  console.log(data);
+  await redisClient.json.arrAppend("boxes", "$", data);
+  res.json(data);
+});
+
+app.listen(PORT, () => {
+  redisClient.connect();
+  console.log(`Listening on port ${PORT}`);
+});
